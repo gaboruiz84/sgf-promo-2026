@@ -2,10 +2,10 @@
 const CACHE_NAME = 'sgf-promo-v8'; 
 
 const urlsToCache = [
-  '/',
-  '/login.html',
-  '/index.html',
-  '/manifest.json'
+  './',
+  './login.html',
+  './index.html',
+  './manifest.json'
 ];
 
 // 1. Instalar el Service Worker y guardar archivos
