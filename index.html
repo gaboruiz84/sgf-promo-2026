@@ -328,19 +328,36 @@
         }
 
         // --- REPORTE SIMPLIFICADO ---
+       // --- REPORTE SIMPLIFICADO Y CORREGIDO (SUMA SOLO HASTA HOY) ---
         function generarReporteDeudores() {
+            // 1. Calcular en qué semana estamos en la vida real (HOY)
+            const fechaInicio = new Date(2026, 1, 2); 
+            const hoy = new Date();
+            const diasT = Math.floor((hoy.getTime() - fechaInicio.getTime()) / (1000 * 60 * 60 * 24));
+            let semanaActualReal = Math.floor(diasT / 7) + 1; 
+            if (semanaActualReal < 1) semanaActualReal = 1;
+
             let totalEsperado = 0;
             
-            Object.values(configSemanasDB).forEach(conf => {
-                if(conf.pago1) totalEsperado += 1;
-                if(conf.pago2) totalEsperado += 1;
-            });
+            // 2. Sumar cuotas SOLO desde la Semana 1 hasta la Semana Actual
+            for (let i = 1; i <= semanaActualReal; i++) {
+                let nombreSemana = `Semana ${i}`;
+                // Si no se ha tocado la configuración de esa semana, por defecto asume que se cobran los 2 días
+                let conf = configSemanasDB[nombreSemana] || { pago1: true, pago2: true };
+                
+                if (conf.pago1) totalEsperado += 1;
+                if (conf.pago2) totalEsperado += 1;
+            }
 
-            document.getElementById('total-esperado-text').innerText = totalEsperado + " cuotas en total";
+            // 3. Mostrar el total de cuotas exigidas hasta la fecha
+            document.getElementById('total-esperado-text').innerText = totalEsperado + " cuotas exigidas a la fecha";
 
             let htmlDeudores = "";
             estudiantesDB.forEach(est => {
+                // Cuántos checks tiene en total este alumno en toda la base de datos
                 let pagosAlumno = cuotasGeneralesDB.filter(c => c.estudiante === est.nombreApp).length;
+                
+                // Lo que debería haber pagado menos lo que ya pagó
                 let cuotasPendientes = totalEsperado - pagosAlumno;
 
                 let color = cuotasPendientes > 0 ? "var(--danger)" : (cuotasPendientes < 0 ? "var(--warning)" : "var(--success)");
@@ -362,7 +379,6 @@
             });
             document.getElementById("lista-deudores").innerHTML = htmlDeudores;
         }
-
         async function guardarCuotasSemanales(boton) {
             const semanaSeleccionada = document.getElementById('semana-cobro').value;
             let pagosAGuardar = [];
