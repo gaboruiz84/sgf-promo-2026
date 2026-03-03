@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SGF - Promo 2026</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#111827">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --bg-app: #F3F4F6; --bg-card: #FFFFFF; --primary: #111827; --primary-light: #374151; --accent: #2563EB; --success: #10B981; --danger: #EF4444; --warning: #F59E0B; --text-muted: #6B7280; --border: #E5E7EB; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        body { background-color: var(--bg-app); color: var(--primary); padding-bottom: 80px; overflow-x: hidden; }
+        header { background-color: var(--bg-card); padding: 1.5rem 1rem; border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 100; display: flex; justify-content: space-between; align-items: center; }
+        header h1 { font-size: 1.1rem; font-weight: 700; color: var(--primary); letter-spacing: -0.5px; }
+        .user-badge { display: flex; align-items: center; gap: 8px; background: var(--bg-app); padding: 6px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 500; color: var(--primary-light); }
+        .user-icon { width: 24px; height: 24px; background: var(--accent); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.7rem; }
+        .logout-btn { color: var(--danger); font-size: 0.8rem; margin-left: 10px; cursor: pointer; font-weight: bold; }
+        .screen { display: none; padding: 1rem; max-width: 600px; margin: 0 auto; animation: screenFadeIn 0.4s ease-out; }
+        .screen.active { display: block; }
+        @keyframes screenFadeIn { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+        h2.screen-title { font-size: 1.5rem; font-weight: 700; margin-bottom: 1.5rem; letter-spacing: -0.7px; }
+        .card { background: var(--bg-card); border-radius: 16px; padding: 1.5rem; margin-bottom: 1rem; border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .main-balance { background: var(--primary); color: white; border: none; }
+        .main-balance h3 { font-size: 0.9rem; font-weight: 500; opacity: 0.8; margin-bottom: 0.5rem; }
+        .main-balance .amount { font-size: 2.8rem; font-weight: 700; letter-spacing: -1px; }
+        .quick-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+        .stat-card p { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 4px; }
+        .stat-card strong { font-size: 1.2rem; font-weight: 600; color: var(--primary); }
+        .stat-card.proyeccion strong { color: var(--accent); }
+        .stat-card.gastos strong { color: var(--danger); }
+        
+        .movimiento-item { display: flex; justify-content: space-between; align-items: center; padding: 14px; background: var(--bg-card); border-radius: 12px; margin-bottom: 10px; border: 1px solid var(--border); }
+        .mov-info { display: flex; flex-direction: column; }
+        .mov-concepto { font-weight: 600; font-size: 0.9rem; color: var(--primary); }
+        .mov-fecha { font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; }
+        .mov-monto { font-weight: 700; font-size: 1.05rem; }
+        .mov-monto.ingreso { color: var(--success); }
+        .mov-monto.egreso { color: var(--danger); }
+
+        .student-item { display: flex; align-items: center; padding: 1rem; background: var(--bg-card); border-radius: 12px; margin-bottom: 0.5rem; }
+        .student-avatar { width: 40px; height: 40px; border-radius: 50%; background: #E5E7EB; color: var(--text-muted); display: flex; align-items: center; justify-content: center; font-weight: 600; margin-right: 1rem; }
+        .student-details { flex-grow: 1; }
+        .student-name { font-weight: 600; font-size: 0.95rem; margin-bottom: 2px; }
+        .payment-checks { display: flex; gap: 8px; }
+        .check-btn { appearance: none; width: 34px; height: 34px; border: 2px solid var(--border); border-radius: 8px; background: var(--bg-card); cursor: pointer; position: relative; transition: 0.2s;}
+        .check-btn:checked { background-color: var(--accent); border-color: var(--accent); }
+        .check-btn:checked::after { content: '✓'; color: white; position: absolute; font-size: 1.2rem; font-weight: bold; left: 50%; top: 50%; transform: translate(-50%, -50%); }
+        .check-btn.pagado-db { background-color: #10B981; border-color: #10B981; }
+        .check-btn:disabled { opacity: 0.3; cursor: not-allowed; background-color: #F3F4F6;}
+        
+        .form-group { margin-bottom: 1.2rem; }
+        .form-label { display: block; margin-bottom: 0.5rem; font-weight: 500; font-size: 0.9rem; }
+        .form-control { width: 100%; padding: 14px; border: 1px solid var(--border); border-radius: 10px; font-size: 1rem; }
+        .btn-primary { width: 100%; background-color: var(--accent); color: white; padding: 16px; border: none; border-radius: 12px; font-size: 1rem; font-weight: 600; cursor: pointer; }
+        .segmented-control { display: flex; background: #E5E7EB; padding: 4px; border-radius: 10px; margin-bottom: 1.5rem; }
+        .segmented-control input { display: none; }
+        .segmented-control label { flex: 1; text-align: center; padding: 10px; border-radius: 8px; cursor: pointer; font-size: 0.9rem; font-weight: 500; color: var(--text-muted); transition: 0.3s;}
+        .segmented-control input:checked + label { background: var(--bg-card); color: var(--accent); box-shadow: 0 1px 3px rgba(0,0,0,0.1); font-weight: 700;}
+        .bottom-nav { position: fixed; bottom: 0; left: 0; width: 100%; background: var(--bg-card); display: flex; justify-content: space-around; padding: 12px 0; border-top: 1px solid var(--border); z-index: 1000; }
+        .nav-item { display: flex; flex-direction: column; align-items: center; color: var(--text-muted); font-size: 0.75rem; font-weight: 500; cursor: pointer; flex: 1; }
+        .nav-item.active { color: var(--accent); }
+        .nav-icon { font-size: 1.3rem; margin-bottom: 4px; }
+        
+        #notificacion-toast { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); background: #10B981; color: white; padding: 12px 24px; border-radius: 30px; font-weight: 600; box-shadow: 0 4px 10px rgba(0,0,0,0.2); z-index: 9999; display: none; opacity: 0; transition: opacity 0.3s ease; white-space: nowrap; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>SGF<span style="color: var(--accent)">.</span>9no</h1>
+        <div class="user-badge" id="perfil-usuario">
+            <div class="user-icon" id="icono-usuario">?</div>
+            <span id="nombre-usuario">Cargando...</span>
+            <a class="logout-btn" onclick="cerrarSesion()">Salir</a>
+        </div>
+    </header>
+
+    <div id="notificacion-toast">✓ Listo</div>
+
+    <div id="pantalla-inicio" class="screen active">
+        <div class="card main-balance">
+            <h3>Fondo Disponible</h3>
+            <div class="amount" id="fondo-total">$0.00</div>
+        </div>
+        <div class="quick-stats">
+            <div class="card stat-card proyeccion">
+                <p>Proyección Final</p>
+                <strong id="meta-proyeccion">$5000.00</strong>
+            </div>
+            <div class="card stat-card gastos">
+                <p>Total Egresos</p>
+                <strong id="total-gastos">$0.00</strong>
+            </div>
+        </div>
+        <h3 style="font-size: 1.1rem; font-weight: 700; margin-top: 1.5rem; margin-bottom: 1rem; color: var(--primary);">Historial Reciente</h3>
+        <div id="lista-movimientos" style="padding-bottom: 20px;">
+            <p style="text-align:center; font-size: 0.85rem; color: var(--text-muted);">Cargando historial...</p>
+        </div>
+    </div>
+
+    <div id="pantalla-cuotas" class="screen">
+        <h2 class="screen-title">Cobro de Cuotas</h2>
+        <p id="fecha-actual-text" style="font-size: 0.95rem; color: var(--accent); font-weight: 600; margin-bottom: 1rem; background: #DBEAFE; padding: 10px; border-radius: 8px; text-align: center;"></p>
+        
+        <div class="form-group">
+            <label class="form-label">Selecciona la semana a cobrar:</label>
+            <select id="semana-cobro" class="form-control" style="margin-bottom: 1rem;" onchange="actualizarChecks()"></select>
+        </div>
+
+        <div style="background: #FEF3C7; padding: 12px; border-radius: 10px; margin-bottom: 1rem; border: 1px solid #FDE68A;">
+            <p style="font-size: 0.85rem; font-weight: 600; color: #D97706; margin-bottom: 8px;">Días activos esta semana:</p>
+            <div style="display: flex; gap: 20px;">
+                <label style="display:flex; align-items:center; gap:5px; font-weight:600; font-size:0.9rem; color: var(--primary);">
+                    <input type="checkbox" id="master-pago1" onchange="toggleDiasSemanales()" style="width:18px; height:18px;"> Cobrar Día 1
+                </label>
+                <label style="display:flex; align-items:center; gap:5px; font-weight:600; font-size:0.9rem; color: var(--primary);">
+                    <input type="checkbox" id="master-pago2" onchange="toggleDiasSemanales()" style="width:18px; height:18px;"> Cobrar Día 2
+                </label>
+            </div>
+            <p style="font-size: 0.75rem; color: #B45309; margin-top: 5px;">* Desmarca si no hubo clases para no afectar la deuda.</p>
+        </div>
+        
+        <div id="lista-estudiantes">
+            <p style="text-align:center; padding: 20px;">Cargando estudiantes...</p>
+        </div>
+        
+        <div style="margin-top: 2rem;">
+            <button class="btn-primary" onclick="guardarCuotasSemanales(this)">Guardar Cambios Semanales</button>
+        </div>
+    </div>
+
+    <div id="pantalla-nuevo" class="screen">
+        <h2 class="screen-title" id="titulo-operacion">Registrar Operación</h2>
+        <div class="card">
+            <div class="segmented-control">
+                <input type="radio" name="tipo_mov" id="type-gasto" value="gasto" checked>
+                <label for="type-gasto">🔴 Egreso / Gasto</label>
+                <input type="radio" name="tipo_mov" id="type-ingreso" value="ingreso">
+                <label for="type-ingreso">🟢 Ingreso Extra</label>
+            </div>
+            <div class="form-group">
+                <label class="form-label" id="label-monto">Monto de la operación ($)</label>
+                <input type="number" step="0.01" class="form-control" id="monto-op" placeholder="0.00">
+            </div>
+            <div class="form-group">
+                <label class="form-label" id="label-concepto">Concepto o Descripción</label>
+                <input type="text" class="form-control" id="concepto-op" placeholder="Ej: Compra de materiales">
+            </div>
+            <div style="margin-top: 2rem;">
+                <button class="btn-primary" onclick="registrarOperacion(this)">Confirmar Registro</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="pantalla-reporte" class="screen">
+        <h2 class="screen-title">Reporte de Cuotas</h2>
+        <div class="card" style="background: #E0E7FF; border-color: #C7D2FE;">
+            <p style="font-size: 0.85rem; color: #4F46E5; margin-bottom: 5px; font-weight: 600;">Obligación total hasta hoy:</p>
+            <strong id="total-esperado-text" style="font-size: 1.5rem; color: var(--primary);">0 cuotas en total</strong>
+            <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 5px;">* Basado en los días activos en el sistema.</p>
+        </div>
+        <div id="lista-deudores" style="padding-bottom: 20px;">
+            <p style="text-align:center; font-size: 0.85rem; color: var(--text-muted);">Generando reporte...</p>
+        </div>
+    </div>
+
+    <nav class="bottom-nav">
+        <div class="nav-item active" onclick="cambiarPantalla('pantalla-inicio', this)">
+            <span class="nav-icon">📊</span><span>Resumen</span>
+        </div>
+        <div class="nav-item" id="nav-cobrar" onclick="cambiarPantalla('pantalla-cuotas', this)">
+            <span class="nav-icon">🤝</span><span>Cobrar</span>
+        </div>
+        <div class="nav-item" id="nav-registrar" onclick="cambiarPantalla('pantalla-nuevo', this)">
+            <span class="nav-icon">📝</span><span>Registrar</span>
+        </div>
+        <div class="nav-item" onclick="cambiarPantalla('pantalla-reporte', this)">
+            <span class="nav-icon">📋</span><span>Reporte</span>
+        </div>
+    </nav>
+
+    <script>
+        // === ⚠️ PEGA TU URL DE GOOGLE AQUÍ ABAJO ⚠️ ===
+        const API_URL = "https://script.google.com/macros/s/AKfycbypo1jW0sYbv8gsFcIDRjnwLRc2HefeeVuyk-XlExuZEBD5-zsIt9J61y9gqmceA3cL-A/exec";
+        
+        let cuotasGeneralesDB = []; 
+        let configSemanasDB = {};
+        let estudiantesDB = [];
+
+        function mostrarExito(msj) { const t = document.getElementById("notificacion-toast"); t.innerText = "✓ " + msj; t.style.background = "#10B981"; t.style.display = "block"; setTimeout(()=>t.style.opacity="1",10); setTimeout(()=>{t.style.opacity="0"; setTimeout(()=>t.style.display="none",300);}, 3000); }
+        function mostrarError(msj) { const t = document.getElementById("notificacion-toast"); t.innerText = "✕ " + msj; t.style.background = "#EF4444"; t.style.display = "block"; setTimeout(()=>t.style.opacity="1",10); setTimeout(()=>{t.style.opacity="0"; setTimeout(()=>t.style.display="none",300);}, 4000); }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const nombre = localStorage.getItem("usuarioLogueado");
+            if (!nombre) { window.location.href = "login.html"; return; }
+
+            document.getElementById("nombre-usuario").innerText = `${nombre} (${localStorage.getItem("cargoUsuario")})`;
+            document.getElementById("icono-usuario").innerText = nombre.charAt(0).toUpperCase();
+
+            if (localStorage.getItem("modoApp") === "lectura") {
+                document.getElementById("nav-cobrar").style.display = "none";
+                document.getElementById("nav-registrar").style.display = "none";
+                document.getElementById("icono-usuario").style.background = "#6B7280";
+                document.getElementById('master-pago1').disabled = true;
+                document.getElementById('master-pago2').disabled = true;
+            }
+
+            document.querySelectorAll('input[name="tipo_mov"]').forEach(radio => {
+                radio.addEventListener('change', (e) => {
+                    const esIn = e.target.value === 'ingreso';
+                    document.getElementById('titulo-operacion').innerText = esIn ? "Registrar Ingreso" : "Registrar Egreso";
+                    document.getElementById('label-monto').innerText = esIn ? "Monto ingresado ($)" : "Monto gastado ($)";
+                    document.getElementById('label-concepto').innerText = esIn ? "Origen (Ej: Venta comida)" : "Concepto de gasto (Ej: Papelería)";
+                    document.getElementById('concepto-op').placeholder = esIn ? "Describe el ingreso" : "Describe el gasto";
+                });
+            });
+
+            configurarFechas();
+            cargarDatosDesdeGoogle();
+            
+            // Interceptar clic para anular pagos
+            document.getElementById('lista-estudiantes').addEventListener('click', async (e) => {
+                if (e.target.classList.contains('check-btn')) {
+                    const chk = e.target;
+                    if (chk.classList.contains('pagado-db')) {
+                        e.preventDefault(); 
+                        if(localStorage.getItem("modoApp") === "lectura") return;
+
+                        const estudiante = chk.closest('.student-item').getAttribute('data-nombre');
+                        const semana = document.getElementById('semana-cobro').value;
+                        const tipoPago = chk.classList.contains('pago1') ? "Pago 1" : "Pago 2";
+
+                        if(confirm(`¿Deseas anular el ${tipoPago} de ${estudiante} de la ${semana}?`)) {
+                            chk.disabled = true;
+                            try {
+                                const response = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ accion: 'eliminar_cuota', estudiante: estudiante, semana: semana, tipoPago: tipoPago }) });
+                                const data = await response.json();
+                                if(data.exito) { mostrarExito("Cobro anulado"); cargarDatosDesdeGoogle(); } 
+                                else { mostrarError(data.mensaje); chk.disabled = false; }
+                            } catch(err) { mostrarError("Error"); chk.disabled = false; }
+                        }
+                    }
+                }
+            });
+        });
+
+        async function cargarDatosDesdeGoogle() {
+            try {
+                const response = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ accion: 'obtener_datos' }) });
+                const data = await response.json();
+                if (data.exito) {
+                    document.getElementById('fondo-total').innerText = "$" + data.fondo.toFixed(2);
+                    document.getElementById('total-gastos').innerText = "$" + data.gastos.toFixed(2);
+                    document.getElementById('meta-proyeccion').innerText = "$" + data.proyeccion.toFixed(2);
+                    
+                    estudiantesDB = data.estudiantes || [];
+                    configSemanasDB = data.configSemanas || {};
+                    cuotasGeneralesDB = data.cuotasPagadas || [];
+
+                    const contMov = document.getElementById("lista-movimientos");
+                    if (data.movimientos.length > 0) {
+                        let htmlMov = "";
+                        data.movimientos.forEach(mov => {
+                            const fechaF = new Date(mov.fecha).toLocaleDateString('es-ES', {day:'2-digit', month:'short'});
+                            const clase = mov.tipo === 'ingreso' ? 'ingreso' : 'egreso';
+                            const signo = mov.tipo === 'ingreso' ? '+' : '-';
+                            htmlMov += `<div class="movimiento-item"><div class="mov-info"><span class="mov-concepto">${mov.concepto}</span><span class="mov-fecha">${fechaF}</span></div><span class="mov-monto ${clase}">${signo}$${mov.monto.toFixed(2)}</span></div>`;
+                        });
+                        contMov.innerHTML = htmlMov;
+                    } else { contMov.innerHTML = "<p style='text-align:center; font-size: 0.85rem; color: var(--text-muted);'>No hay movimientos extra.</p>"; }
+
+                    const contenedor = document.getElementById("lista-estudiantes");
+                    if(contenedor.innerHTML.includes("Cargando")) {
+                        let htmlEst = "";
+                        estudiantesDB.forEach(est => {
+                            let iniciales = est.nombreApp.split(' ').map(n=>n[0]).join('').substring(0,2).toUpperCase();
+                            htmlEst += `<div class="student-item" data-nombre="${est.nombreApp}"><div class="student-avatar">${iniciales}</div><div class="student-details"><div class="student-name">${est.nombreApp}</div></div><div class="payment-checks"><input type="checkbox" class="check-btn pago1" title="Día 1 ($1.00)"><input type="checkbox" class="check-btn pago2" title="Día 2 ($1.00)"></div></div>`;
+                        });
+                        contenedor.innerHTML = htmlEst;
+                    }
+                    
+                    actualizarChecks();
+                    generarReporteDeudores();
+                }
+            } catch (error) { document.getElementById("lista-estudiantes").innerHTML = "<p style='color:red; text-align:center;'>Error de red.</p>"; }
+        }
+
+        function actualizarChecks() {
+            const semanaActual = document.getElementById('semana-cobro').value;
+            
+            let conf = configSemanasDB[semanaActual] || { pago1: true, pago2: true };
+            document.getElementById('master-pago1').checked = conf.pago1;
+            document.getElementById('master-pago2').checked = conf.pago2;
+
+            document.querySelectorAll('.student-item').forEach(item => {
+                const nombre = item.getAttribute('data-nombre');
+                const chk1 = item.querySelector('.pago1');
+                const chk2 = item.querySelector('.pago2');
+                
+                chk1.checked = false; chk1.classList.remove('pagado-db');
+                chk2.checked = false; chk2.classList.remove('pagado-db');
+
+                chk1.disabled = !conf.pago1;
+                chk2.disabled = !conf.pago2;
+
+                const pagado1 = cuotasGeneralesDB.find(c => c.estudiante === nombre && c.semana === semanaActual && c.tipoPago === "Pago 1");
+                const pagado2 = cuotasGeneralesDB.find(c => c.estudiante === nombre && c.semana === semanaActual && c.tipoPago === "Pago 2");
+
+                if (pagado1) { chk1.checked = true; chk1.classList.add('pagado-db'); chk1.disabled = false; }
+                if (pagado2) { chk2.checked = true; chk2.classList.add('pagado-db'); chk2.disabled = false; }
+            });
+        }
+
+        async function toggleDiasSemanales() {
+            const semanaActual = document.getElementById('semana-cobro').value;
+            const p1 = document.getElementById('master-pago1').checked;
+            const p2 = document.getElementById('master-pago2').checked;
+
+            configSemanasDB[semanaActual] = { pago1: p1, pago2: p2 };
+            actualizarChecks();
+            generarReporteDeudores(); 
+
+            fetch(API_URL, { method: 'POST', body: JSON.stringify({ accion: 'actualizar_config_semana', semana: semanaActual, pago1: p1, pago2: p2 }) });
+        }
+
+        // --- REPORTE SIMPLIFICADO ---
+        function generarReporteDeudores() {
+            let totalEsperado = 0;
+            
+            Object.values(configSemanasDB).forEach(conf => {
+                if(conf.pago1) totalEsperado += 1;
+                if(conf.pago2) totalEsperado += 1;
+            });
+
+            document.getElementById('total-esperado-text').innerText = totalEsperado + " cuotas en total";
+
+            let htmlDeudores = "";
+            estudiantesDB.forEach(est => {
+                let pagosAlumno = cuotasGeneralesDB.filter(c => c.estudiante === est.nombreApp).length;
+                let cuotasPendientes = totalEsperado - pagosAlumno;
+
+                let color = cuotasPendientes > 0 ? "var(--danger)" : (cuotasPendientes < 0 ? "var(--warning)" : "var(--success)");
+                
+                let estadoText = "";
+                if (cuotasPendientes > 0) {
+                    estadoText = `Cuotas pendientes: ${cuotasPendientes}`;
+                } else if (cuotasPendientes < 0) {
+                    estadoText = `Adelantadas: ${Math.abs(cuotasPendientes)}`;
+                } else {
+                    estadoText = "Solvente";
+                }
+
+                htmlDeudores += `
+                <div class="student-item" style="justify-content: space-between;">
+                    <div class="student-details"><div class="student-name">${est.nombreApp}</div></div>
+                    <div style="font-weight: 700; font-size: 0.90rem; color: ${color}; text-align: right;">${estadoText}</div>
+                </div>`;
+            });
+            document.getElementById("lista-deudores").innerHTML = htmlDeudores;
+        }
+
+        async function guardarCuotasSemanales(boton) {
+            const semanaSeleccionada = document.getElementById('semana-cobro').value;
+            let pagosAGuardar = [];
+
+            document.querySelectorAll('.student-item').forEach(item => {
+                const n = item.getAttribute('data-nombre');
+                const c1 = item.querySelector('.pago1');
+                const c2 = item.querySelector('.pago2');
+                if (c1.checked && !c1.disabled && !c1.classList.contains('pagado-db')) pagosAGuardar.push({ estudiante: n, semana: semanaSeleccionada, tipoPago: "Pago 1", monto: 1.00 });
+                if (c2.checked && !c2.disabled && !c2.classList.contains('pagado-db')) pagosAGuardar.push({ estudiante: n, semana: semanaSeleccionada, tipoPago: "Pago 2", monto: 1.00 });
+            });
+
+            if (pagosAGuardar.length === 0) { mostrarError("No hay pagos nuevos que guardar."); return; }
+            const textoOriginal = boton.innerHTML; boton.innerHTML = "⏳ Guardando..."; boton.disabled = true;
+
+            try {
+                const response = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ accion: 'guardar_cuotas_masivas', pagos: pagosAGuardar, registradoPor: localStorage.getItem("usuarioLogueado") }) });
+                const data = await response.json();
+                if (data.exito) { mostrarExito("Listo"); cargarDatosDesdeGoogle(); } 
+                else { mostrarError(data.mensaje); }
+            } catch (error) { mostrarError("Error al guardar."); } 
+            finally { boton.innerHTML = textoOriginal; boton.disabled = false; }
+        }
+
+        async function registrarOperacion(boton) {
+            const monto = document.getElementById('monto-op').value;
+            const concepto = document.getElementById('concepto-op').value;
+            const tipo = document.querySelector('input[name="tipo_mov"]:checked').value;
+            
+            if(!monto || !concepto) { mostrarError("Llena el monto y el concepto."); return; }
+
+            const textoOriginal = boton.innerHTML; boton.innerHTML = "⏳ Guardando..."; boton.disabled = true;
+            try {
+                const response = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ accion: 'registrar_movimiento', tipo: tipo, monto: parseFloat(monto), concepto: concepto, registradoPor: localStorage.getItem("usuarioLogueado") }) });
+                const data = await response.json();
+                if(data.exito) { mostrarExito("Listo"); document.getElementById('monto-op').value = ''; document.getElementById('concepto-op').value = ''; cargarDatosDesdeGoogle(); cambiarPantalla('pantalla-inicio', document.querySelector('.nav-item')); } 
+                else { mostrarError(data.mensaje); }
+            } catch (error) { mostrarError("Error de red."); } 
+            finally { boton.innerHTML = textoOriginal; boton.disabled = false; }
+        }
+
+        function configurarFechas() {
+            const hoy = new Date();
+            document.getElementById('fecha-actual-text').innerText = "📅 Hoy: " + hoy.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }).replace(/^\w/, (c) => c.toUpperCase());
+            const selectSemana = document.getElementById('semana-cobro'); selectSemana.innerHTML = ""; 
+            
+            const fechaInicio = new Date(2026, 1, 2); 
+            const fechaFin = new Date(2026, 10, 30);  
+            const diasT = Math.floor((hoy.getTime() - fechaInicio.getTime()) / (1000 * 60 * 60 * 24));
+            let semanaActual = Math.floor(diasT / 7) + 1; if (semanaActual < 1) semanaActual = 1;
+
+            const totalSemanas = Math.floor(Math.floor((fechaFin.getTime() - fechaInicio.getTime()) / (1000 * 60 * 60 * 24)) / 7) + 1;
+
+            for (let i = 1; i <= totalSemanas; i++) {
+                let d1 = new Date(fechaInicio.getTime() + ((i - 1) * 7 * 86400000));
+                let d2 = new Date(d1.getTime() + (6 * 86400000));
+                const option = document.createElement("option");
+                option.text = `Semana ${i} (${d1.getDate()} ${d1.toLocaleString('es-ES', {month:'short'})} al ${d2.getDate()} ${d2.toLocaleString('es-ES', {month:'short'})})`;
+                option.value = `Semana ${i}`;
+                if (i === semanaActual) option.selected = true;
+                selectSemana.appendChild(option);
+            }
+        }
+
+        function cambiarPantalla(id, menu) { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active')); document.getElementById(id).classList.add('active'); menu.classList.add('active'); window.scrollTo(0, 0); }
+        function cerrarSesion() { localStorage.clear(); window.location.href = "login.html"; }
+    </script>
+</body>
+</html>

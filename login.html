@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Login - SGF Noveno</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#111827">
+    <link rel="apple-touch-icon" href="icon-192.png">
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --bg-app: #F3F4F6; --bg-card: #FFFFFF; --primary: #111827; --primary-light: #374151; --accent: #2563EB; --text-muted: #6B7280; --border: #E5E7EB; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        body { background-color: var(--bg-app); color: var(--primary); display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 1.5rem; }
+        .login-container { width: 100%; max-width: 400px; animation: slideUp 0.5s ease-out; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .logo-area { text-align: center; margin-bottom: 2rem; }
+        .logo-area h1 { font-size: 2.5rem; font-weight: 800; letter-spacing: -1px; margin-bottom: 0.5rem; }
+        .logo-area span { color: var(--accent); }
+        .login-card { background: var(--bg-card); border-radius: 20px; padding: 2rem; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); border: 1px solid var(--border); }
+        .form-group { margin-bottom: 1.5rem; }
+        .form-label { display: block; margin-bottom: 0.5rem; font-weight: 600; font-size: 0.9rem; color: var(--primary-light); }
+        .form-control { width: 100%; padding: 14px 16px; border: 1.5px solid var(--border); border-radius: 12px; font-size: 1rem; background-color: #F9FAFB; }
+        .form-control:focus { outline: none; border-color: var(--accent); background-color: var(--bg-card); }
+        .pin-input { letter-spacing: 0.5rem; font-size: 1.2rem; font-weight: 700; text-align: center; }
+        .btn-primary { width: 100%; background-color: var(--primary); color: white; padding: 16px; border: none; border-radius: 12px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: 0.2s; }
+        .btn-primary:active { transform: scale(0.98); }
+        .divider { display: flex; align-items: center; text-align: center; margin: 1.5rem 0; color: var(--text-muted); font-size: 0.85rem; font-weight: 500; }
+        .divider::before, .divider::after { content: ''; flex: 1; border-bottom: 1px solid var(--border); }
+        .divider::before { margin-right: .5em; } .divider::after { margin-left: .5em; }
+        .btn-secondary { width: 100%; background-color: transparent; color: var(--text-muted); padding: 16px; border: 1.5px solid var(--border); border-radius: 12px; font-size: 0.95rem; font-weight: 600; cursor: pointer; transition: 0.2s; }
+        .btn-secondary:active { background-color: #F3F4F6; }
+        .error-msg { color: #EF4444; font-size: 0.85rem; font-weight: 500; text-align: center; margin-top: 1rem; display: none; }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="logo-area">
+            <h1>SGF<span>.</span>9no</h1>
+            <p style="color: var(--text-muted); font-weight: 500;">Promo 2026</p>
+        </div>
+        <div class="login-card">
+            <div class="form-group">
+                <label class="form-label">Usuario / Cargo</label>
+                <input type="text" id="usuario" class="form-control" placeholder="Ej: Marlon o Presidente" autocomplete="off">
+            </div>
+            <div class="form-group">
+                <label class="form-label">PIN de Seguridad (4 dígitos)</label>
+                <input type="password" id="pin" class="form-control pin-input" maxlength="4" inputmode="numeric" pattern="[0-9]*" placeholder="••••">
+            </div>
+            <button class="btn-primary" id="btn-login" onclick="simularLoginDirectiva(this)">Acceder a la Directiva</button>
+            <div id="error-mensaje" class="error-msg"></div>
+            <div class="divider">o</div>
+            <button class="btn-secondary" onclick="simularLoginEstudiante(this)">👁️ Entrar como Espectador</button>
+        </div>
+    </div>
+
+    <script>
+        // Registrar el Service Worker para la PWA
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('sw.js').catch(err => console.log('SW error', err));
+            });
+        }
+
+        // === ⚠️ PEGA TU URL DE GOOGLE APPS SCRIPT AQUÍ ABAJO ⚠️ ===
+        const API_URL = "https://script.google.com/macros/s/AKfycbypo1jW0sYbv8gsFcIDRjnwLRc2HefeeVuyk-XlExuZEBD5-zsIt9J61y9gqmceA3cL-A/exec";
+
+        async function simularLoginDirectiva(boton) {
+            const usuario = document.getElementById('usuario').value.trim();
+            const pin = document.getElementById('pin').value.trim();
+            const errorMsg = document.getElementById('error-mensaje');
+
+            if(usuario === "" || pin.length < 4) {
+                errorMsg.innerText = "Ingresa tu usuario y PIN de 4 dígitos.";
+                errorMsg.style.display = "block"; return;
+            }
+
+            const textoOriginal = boton.innerHTML;
+            boton.innerHTML = "⏳ Verificando...";
+            boton.disabled = true;
+            errorMsg.style.display = "none";
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ accion: 'login', usuario: usuario, pin: pin })
+                });
+
+                const data = await response.json();
+
+                if (data.exito) {
+                    localStorage.setItem("usuarioLogueado", data.nombre);
+                    localStorage.setItem("cargoUsuario", data.cargo);
+                    localStorage.setItem("modoApp", "edicion");
+                    window.location.href = "index.html"; 
+                } else {
+                    throw new Error(data.mensaje);
+                }
+            } catch (error) {
+                errorMsg.innerText = error.message || "Error al conectar. Verifica tu internet.";
+                errorMsg.style.display = "block";
+                document.getElementById('pin').value = '';
+            } finally {
+                boton.innerHTML = textoOriginal;
+                boton.disabled = false;
+            }
+        }
+
+        function simularLoginEstudiante(boton) {
+            boton.innerHTML = "⏳ Entrando...";
+            boton.disabled = true;
+            setTimeout(() => {
+                localStorage.setItem("modoApp", "lectura");
+                localStorage.setItem("usuarioLogueado", "Estudiante");
+                localStorage.setItem("cargoUsuario", "Espectador");
+                window.location.href = "index.html";
+            }, 800);
+        }
+    </script>
+</body>
+</html>
