@@ -326,7 +326,124 @@
 
             fetch(API_URL, { method: 'POST', body: JSON.stringify({ accion: 'actualizar_config_semana', semana: semanaActual, pago1: p1, pago2: p2 }) });
         }
+// --- 1. SABER EN QUÉ SEMANA ESTAMOS EXACTAMENTE ---
+        function obtenerSemanaReal() {
+            const fechaInicio = new Date(2026, 1, 2); // 2 de febrero
+            const hoy = new Date();
+            const diasT = Math.floor((hoy.getTime() - fechaInicio.getTime()) / (1000 * 60 * 60 * 24));
+            let s = Math.floor(diasT / 7) + 1;
+            return s < 1 ? 1 : s;
+        }
 
+        // --- 2. PINTAR LOS MASTER CHECKS SEGÚN SI ES PASADO O FUTURO ---
+        function actualizarChecks() {
+            const semanaActual = document.getElementById('semana-cobro').value;
+            const numSemana = parseInt(semanaActual.replace('Semana ', ''));
+            const semanaReal = obtenerSemanaReal();
+            
+            // LÓGICA CLAVE: Si es una semana pasada o actual, por defecto se cobra (true). Si es futura, NO se cobra (false).
+            const porDefecto = numSemana <= semanaReal;
+            
+            let conf = configSemanasDB[semanaActual] || { pago1: porDefecto, pago2: porDefecto };
+            
+            document.getElementById('master-pago1').checked = conf.pago1;
+            document.getElementById('master-pago2').checked = conf.pago2;
+
+            document.querySelectorAll('.student-item').forEach(item => {
+                const nombre = item.getAttribute('data-nombre');
+                const chk1 = item.querySelector('.pago1');
+                const chk2 = item.querySelector('.pago2');
+                
+                chk1.checked = false; chk1.classList.remove('pagado-db');
+                chk2.checked = false; chk2.classList.remove('pagado-db');
+
+                // Si el Master Check está apagado, la columna se bloquea
+                chk1.disabled = !conf.pago1;
+                chk2.disabled = !conf.pago2;
+
+                const pagado1 = cuotasGeneralesDB.find(c => c.estudiante === nombre && c.semana === semanaActual && c.tipoPago === "Pago 1");
+                const pagado2 = cuotasGeneralesDB.find(c => c.estudiante === nombre && c.semana === semanaActual && c.tipoPago === "Pago 2");
+
+                if (pagado1) { chk1.checked = true; chk1.classList.add('pagado-db'); chk1.disabled = false; }
+                if (pagado2) { chk2.checked = true; chk2.classList.add('pagado-db'); chk2.disabled = false; }
+            });
+        }
+
+        // --- 3. MOSTRAR ADVERTENCIAS AL TOCAR LOS MASTER CHECKS ---
+        async function toggleDiasSemanales() {
+            const semanaActual = document.getElementById('semana-cobro').value;
+            const numSemana = parseInt(semanaActual.replace('Semana ', ''));
+            const semanaReal = obtenerSemanaReal();
+            
+            const p1 = document.getElementById('master-pago1').checked;
+            const p2 = document.getElementById('master-pago2').checked;
+
+            // ADVERTENCIA 1: Quieren habilitar cobros de una semana que no ha llegado
+            if (numSemana > semanaReal && (p1 || p2)) {
+                if(!confirm("⚠️ ADVERTENCIA: Estás habilitando el cobro para una semana futura. Esto aumentará la deuda de todos. ¿Deseas continuar?")) {
+                    actualizarChecks(); // Revertir si dice que no
+                    return;
+                }
+            }
+            
+            // ADVERTENCIA 2: Quieren desmarcar (perdonar) un día de una semana pasada o actual
+            if (numSemana <= semanaReal && (!p1 || !p2)) {
+                 if(!confirm("⚠️ ADVERTENCIA: Estás desactivando un día de cobro. Esto reducirá la deuda total del grado. ¿Confirmas que no hubo clases o no se cobró este día?")) {
+                     actualizarChecks(); // Revertir si dice que no
+                     return;
+                 }
+            }
+
+            // Si acepta las advertencias, guardamos la configuración
+            configSemanasDB[semanaActual] = { pago1: p1, pago2: p2 };
+            actualizarChecks();
+            generarReporteDeudores(); // Recalcula la deuda al instante
+
+            fetch(API_URL, { method: 'POST', body: JSON.stringify({ accion: 'actualizar_config_semana', semana: semanaActual, pago1: p1, pago2: p2 }) });
+        }
+
+        // --- 4. CALCULAR REPORTE SUMANDO SOLO LOS CHECKS ACTIVOS ---
+        function generarReporteDeudores() {
+            const semanaReal = obtenerSemanaReal();
+            let totalEsperado = 0;
+            
+            // Revisamos las 43 semanas del año para sumar solo las que estén activas
+            for (let i = 1; i <= 43; i++) {
+                let nombreSemana = `Semana ${i}`;
+                let porDefecto = i <= semanaReal; // Pasadas=true, Futuras=false
+                
+                let conf = configSemanasDB[nombreSemana] || { pago1: porDefecto, pago2: porDefecto };
+                
+                if (conf.pago1) totalEsperado += 1;
+                if (conf.pago2) totalEsperado += 1;
+            }
+
+            document.getElementById('total-esperado-text').innerText = totalEsperado + " cuotas exigidas a la fecha";
+
+            let htmlDeudores = "";
+            estudiantesDB.forEach(est => {
+                let pagosAlumno = cuotasGeneralesDB.filter(c => c.estudiante === est.nombreApp).length;
+                let cuotasPendientes = totalEsperado - pagosAlumno;
+
+                let color = cuotasPendientes > 0 ? "var(--danger)" : (cuotasPendientes < 0 ? "var(--warning)" : "var(--success)");
+                
+                let estadoText = "";
+                if (cuotasPendientes > 0) {
+                    estadoText = `Cuotas pendientes: ${cuotasPendientes}`;
+                } else if (cuotasPendientes < 0) {
+                    estadoText = `Adelantadas: ${Math.abs(cuotasPendientes)}`;
+                } else {
+                    estadoText = "Solvente";
+                }
+
+                htmlDeudores += `
+                <div class="student-item" style="justify-content: space-between;">
+                    <div class="student-details"><div class="student-name">${est.nombreApp}</div></div>
+                    <div style="font-weight: 700; font-size: 0.90rem; color: ${color}; text-align: right;">${estadoText}</div>
+                </div>`;
+            });
+            document.getElementById("lista-deudores").innerHTML = htmlDeudores;
+        }
         // --- REPORTE SIMPLIFICADO ---
        // --- REPORTE SIMPLIFICADO Y CORREGIDO (SUMA SOLO HASTA HOY) ---
         function generarReporteDeudores() {
