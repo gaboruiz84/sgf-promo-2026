@@ -1,7 +1,7 @@
 {
   "name": "Sistema de Gestión Financiera Promo 2026",
   "short_name": "SGF 9no",
-  "start_url": "/login.html",
+  "start_url": "./login.html",
   "display": "standalone",
   "background_color": "#F3F4F6",
   "theme_color": "#111827",
@@ -18,4 +18,5 @@
       "type": "image/png"
     }
   ]
+
 }
