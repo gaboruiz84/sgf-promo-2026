@@ -223,7 +223,7 @@
             configurarFechas();
             cargarDatosDesdeGoogle();
             
-            // Interceptar clic para anular pagos
+            // Interceptar clic para anular pagos (AHORA ES INSTANTÁNEO)
             document.getElementById('lista-estudiantes').addEventListener('click', async (e) => {
                 if (e.target.classList.contains('check-btn')) {
                     const chk = e.target;
@@ -236,13 +236,30 @@
                         const tipoPago = chk.classList.contains('pago1') ? "Pago 1" : "Pago 2";
 
                         if(confirm(`¿Deseas anular el ${tipoPago} de ${estudiante} de la ${semana}?`)) {
-                            chk.disabled = true;
+                            
+                            // --- MAGIA VISUAL: Se borra y actualiza el reporte en 0.1 segundos ---
+                            chk.classList.remove('pagado-db');
+                            chk.checked = false;
+                            
+                            const index = cuotasGeneralesDB.findIndex(c => c.estudiante === estudiante && c.semana === semana && c.tipoPago === tipoPago);
+                            if (index !== -1) cuotasGeneralesDB.splice(index, 1);
+                            
+                            generarReporteDeudores(); // El número baja al instante en la pestaña de Reporte
+                            
+                            // --- VIAJE A GOOGLE EN SEGUNDO PLANO ---
                             try {
                                 const response = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ accion: 'eliminar_cuota', estudiante: estudiante, semana: semana, tipoPago: tipoPago }) });
                                 const data = await response.json();
-                                if(data.exito) { mostrarExito("Cobro anulado"); cargarDatosDesdeGoogle(); } 
-                                else { mostrarError(data.mensaje); chk.disabled = false; }
-                            } catch(err) { mostrarError("Error"); chk.disabled = false; }
+                                if(data.exito) { 
+                                    mostrarExito("Cobro anulado"); 
+                                } else { 
+                                    mostrarError(data.mensaje); 
+                                    cargarDatosDesdeGoogle(); // Si Google falla, regresamos el check
+                                }
+                            } catch(err) { 
+                                mostrarError("Error"); 
+                                cargarDatosDesdeGoogle();
+                            }
                         }
                     }
                 }
@@ -430,13 +447,30 @@
             if (pagosAGuardar.length === 0) { mostrarError("No hay pagos nuevos que guardar."); return; }
             const textoOriginal = boton.innerHTML; boton.innerHTML = "⏳ Guardando..."; boton.disabled = true;
 
+            // --- MAGIA VISUAL INSTANTÁNEA ---
+            pagosAGuardar.forEach(p => {
+                cuotasGeneralesDB.push({ estudiante: p.estudiante, semana: p.semana, tipoPago: p.tipoPago });
+            });
+            actualizarChecks(); // Se pintan de verde instantáneamente
+            generarReporteDeudores(); // El reporte se recalcula al instante
+
+            // --- VIAJE A GOOGLE EN SEGUNDO PLANO ---
             try {
                 const response = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ accion: 'guardar_cuotas_masivas', pagos: pagosAGuardar, registradoPor: localStorage.getItem("usuarioLogueado") }) });
                 const data = await response.json();
-                if (data.exito) { mostrarExito("Listo"); cargarDatosDesdeGoogle(); } 
-                else { mostrarError(data.mensaje); }
-            } catch (error) { mostrarError("Error al guardar."); } 
-            finally { boton.innerHTML = textoOriginal; boton.disabled = false; }
+                if (data.exito) { 
+                    mostrarExito("Listo"); 
+                    // Sincronización silenciosa para asegurar todo
+                    fetch(API_URL, { method: 'POST', body: JSON.stringify({ accion: 'obtener_datos' }) })
+                        .then(r=>r.json()).then(d=>{ cuotasGeneralesDB=d.cuotasPagadas; generarReporteDeudores(); });
+                } else { 
+                    mostrarError(data.mensaje); cargarDatosDesdeGoogle(); 
+                }
+            } catch (error) { 
+                mostrarError("Error al guardar."); cargarDatosDesdeGoogle(); 
+            } finally { 
+                boton.innerHTML = textoOriginal; boton.disabled = false; 
+            }
         }
 
         async function registrarOperacion(boton) {
