@@ -1,5 +1,5 @@
 // === CAMBIA ESTE NÚMERO CADA VEZ QUE HAGAS UNA ACTUALIZACIÓN (ej. v2, v3, v4...) ===
-const CACHE_NAME = 'sgf-promo-21; 
+const CACHE_NAME = 'sgf-promo-22; 
 
 const urlsToCache = [
   './',
