@@ -29,6 +29,15 @@
         .btn-primary:active { transform: scale(0.98); }
         .btn-primary:disabled { opacity: 0.7; cursor: not-allowed; transform: none; }
         
+        /* Botón para espectadores */
+        .btn-secondary { width: 100%; background: #F3F4F6; color: var(--primary-light); padding: 14px; border: 1px solid var(--border); border-radius: 10px; font-size: 0.95rem; font-weight: 600; cursor: pointer; transition: 0.2s; margin-top: 1rem; }
+        .btn-secondary:active { background: #E5E7EB; }
+        
+        .divider { display: flex; align-items: center; text-align: center; margin: 1.5rem 0; color: #9CA3AF; font-size: 0.85rem; }
+        .divider::before, .divider::after { content: ''; flex: 1; border-bottom: 1px solid var(--border); }
+        .divider:not(:empty)::before { margin-right: .5em; }
+        .divider:not(:empty)::after { margin-left: .5em; }
+
         .error-msg { color: var(--danger); font-size: 0.85rem; margin-top: 1rem; display: none; font-weight: 500; background: #FEF2F2; padding: 10px; border-radius: 8px; border: 1px solid #FCA5A5;}
     </style>
 </head>
@@ -44,22 +53,37 @@
                 <label>Usuario / Cargo (Opcional)</label>
                 <input type="text" id="usuario" placeholder="Ej: Tesorera" autocomplete="off">
             </div>
+            
             <div class="form-group">
-                <label>PIN de Seguridad</label>
+                <label>PIN de Seguridad Directiva</label>
                 <input type="password" id="pin" placeholder="****" required pattern="[0-9]*" inputmode="numeric">
             </div>
             
-            <button type="submit" class="btn-primary" id="btn-login">Ingresar al sistema</button>
+            <button type="submit" class="btn-primary" id="btn-login">Ingresar como Directiva</button>
             <div class="error-msg" id="error-msg">PIN incorrecto. Intenta de nuevo.</div>
         </form>
+
+        <div class="divider">O</div>
+
+        <button type="button" class="btn-secondary" onclick="entrarComoEspectador()">
+            👁️ Entrar como Espectador
+        </button>
     </div>
 
     <script>
-        // TU NUEVA URL OFICIAL
+        // TU URL OFICIAL
         const API_URL = "https://script.google.com/macros/s/AKfycbxfJPvUGrzOR55e3uGwjDKaGPtXjsCPE0Y6nFDjFTvgjQy5-5f6aw406QMeta8i58z1fg/exec";
         
         // Si el usuario ya había iniciado sesión antes, lo mandamos directo al Dashboard
         if (localStorage.getItem("usuarioLogueado")) {
+            window.location.href = "index.html";
+        }
+
+        // Lógica para el botón de Espectador
+        function entrarComoEspectador() {
+            localStorage.setItem("usuarioLogueado", "Invitado");
+            localStorage.setItem("cargoUsuario", "Espectador");
+            localStorage.setItem("modoApp", "lectura"); 
             window.location.href = "index.html";
         }
 
@@ -87,36 +111,30 @@
                 const data = await response.json();
                 
                 if (data.exito) {
-                    // BLINDAJE: Extraemos los datos exactamente como los manda el nuevo Google Apps Script
                     const nombreOficial = data.nombre || (data.usuario && data.usuario.nombre) || "Usuario";
                     const cargoOficial = data.cargo || (data.usuario && data.usuario.cargo) || "Miembro";
                     const modoOficial = data.modo || "edicion";
 
-                    // Guardamos en la memoria del celular
                     localStorage.setItem("usuarioLogueado", nombreOficial);
                     localStorage.setItem("cargoUsuario", cargoOficial);
                     localStorage.setItem("modoApp", modoOficial);
                     
-                    // Efecto de éxito
                     btn.innerHTML = "✓ Acceso concedido";
                     btn.style.background = "#10B981";
                     
-                    // Redirigimos a la app principal en medio segundo
                     setTimeout(() => {
                         window.location.href = "index.html";
                     }, 500);
                 } else {
-                    // PIN incorrecto
                     errorMsg.innerText = data.mensaje || "Credenciales incorrectas.";
                     errorMsg.style.display = 'block';
-                    btn.innerHTML = "Ingresar al sistema";
+                    btn.innerHTML = "Ingresar como Directiva";
                     btn.disabled = false;
                 }
             } catch (error) {
-                // Error de internet
                 errorMsg.innerText = "Error de conexión. Revisa tu internet y vuelve a intentar.";
                 errorMsg.style.display = 'block';
-                btn.innerHTML = "Ingresar al sistema";
+                btn.innerHTML = "Ingresar como Directiva";
                 btn.disabled = false;
             }
         });
