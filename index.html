@@ -185,8 +185,9 @@
     </nav>
 
     <script>
-        // === URL OFICIAL CONECTADA ===
+        // === NUEVA URL OFICIAL ===
         const API_URL = "https://script.google.com/macros/s/AKfycbxfJPvUGrzOR55e3uGwjDKaGPtXjsCPE0Y6nFDjFTvgjQy5-5f6aw406QMeta8i58z1fg/exec";
+        
         let cuotasGeneralesDB = []; 
         let configSemanasDB = {};
         let estudiantesDB = [];
@@ -196,9 +197,10 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             const nombre = localStorage.getItem("usuarioLogueado");
-            if (!nombre) { window.location.href = "login.html"; return; }
+            if (!nombre || nombre === "undefined") { window.location.href = "login.html"; return; }
 
-            document.getElementById("nombre-usuario").innerText = `${nombre} (${localStorage.getItem("cargoUsuario")})`;
+            const cargo = localStorage.getItem("cargoUsuario") || "Usuario";
+            document.getElementById("nombre-usuario").innerText = `${nombre} (${cargo})`;
             document.getElementById("icono-usuario").innerText = nombre.charAt(0).toUpperCase();
 
             if (localStorage.getItem("modoApp") === "lectura") {
@@ -222,9 +224,7 @@
             configurarFechas();
             cargarDatosDesdeGoogle();
             
-            // =========================================================
-            // LÓGICA DE VELOCIDAD INSTANTÁNEA AL ANULAR UN PAGO
-            // =========================================================
+            // Lógica Instantánea para ANULAR cuota
             document.getElementById('lista-estudiantes').addEventListener('click', async (e) => {
                 if (e.target.classList.contains('check-btn')) {
                     const chk = e.target;
@@ -238,23 +238,20 @@
 
                         if(confirm(`¿Deseas anular el ${tipoPago} de ${estudiante} de la ${semana}?`)) {
                             
-                            // 1. MAGIA VISUAL: Se quita el color verde al instante
+                            // Efecto visual instantáneo
                             chk.classList.remove('pagado-db');
                             chk.checked = false;
                             
-                            // 2. Se borra de la memoria temporal
                             const index = cuotasGeneralesDB.findIndex(c => c.estudiante === estudiante && c.semana === semana && c.tipoPago === tipoPago);
                             if (index !== -1) cuotasGeneralesDB.splice(index, 1);
                             
-                            // 3. Se actualiza el Reporte de Deudores al instante
                             generarReporteDeudores(); 
                             
-                            // 4. Se resta $1.00 del Fondo Principal al instante
                             let fondoElem = document.getElementById('fondo-total');
                             let fondoActual = parseFloat(fondoElem.innerText.replace('$', '').replace(',', ''));
                             fondoElem.innerText = "$" + (fondoActual - 1).toFixed(2);
                             
-                            // 5. VIAJE A GOOGLE EN SEGUNDO PLANO
+                            // Envío silencioso a Google
                             try {
                                 const response = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ accion: 'eliminar_cuota', estudiante: estudiante, semana: semana, tipoPago: tipoPago }) });
                                 const data = await response.json();
@@ -262,10 +259,10 @@
                                     mostrarExito("Cobro anulado"); 
                                 } else { 
                                     mostrarError(data.mensaje); 
-                                    cargarDatosDesdeGoogle(); // Si Google falla, regresamos el check
+                                    cargarDatosDesdeGoogle(); 
                                 }
                             } catch(err) { 
-                                mostrarError("Error"); 
+                                mostrarError("Error de conexión"); 
                                 cargarDatosDesdeGoogle();
                             }
                         }
@@ -315,16 +312,15 @@
             } catch (error) { document.getElementById("lista-estudiantes").innerHTML = "<p style='color:red; text-align:center;'>Error de red.</p>"; }
         }
 
-        // --- 1. SABER EN QUÉ SEMANA ESTAMOS EXACTAMENTE ---
         function obtenerSemanaReal() {
-            const fechaInicio = new Date(2026, 1, 2); // 2 de febrero de 2026
+            const fechaInicio = new Date(2026, 1, 2); 
             const hoy = new Date();
             const diasT = Math.floor((hoy.getTime() - fechaInicio.getTime()) / (1000 * 60 * 60 * 24));
             let s = Math.floor(diasT / 7) + 1;
             return s < 1 ? 1 : s;
         }
 
-        // --- 2. PINTAR LOS MASTER CHECKS (BLINDADO) ---
+        // --- PINTAR LOS CHECKS (Con prevención de error null) ---
         function actualizarChecks() {
             const semanaActual = document.getElementById('semana-cobro').value;
             const numSemana = parseInt(semanaActual.replace('Semana ', ''));
@@ -332,18 +328,20 @@
             const porDefecto = numSemana <= semanaReal;
             
             let conf = configSemanasDB[semanaActual];
-            // Obligamos a la App a reconocer si es un falso matemático o un "falso" en texto
             let p1 = conf ? (conf.pago1 === true || conf.pago1 === "true") : porDefecto;
             let p2 = conf ? (conf.pago2 === true || conf.pago2 === "true") : porDefecto;
             
             document.getElementById('master-pago1').checked = p1;
             document.getElementById('master-pago2').checked = p2;
 
-            document.querySelectorAll('.student-item').forEach(item => {
+            // Restricción: Solo buscar casillas dentro de la lista de estudiantes
+            document.querySelectorAll('#lista-estudiantes .student-item').forEach(item => {
                 const nombre = item.getAttribute('data-nombre');
                 const chk1 = item.querySelector('.pago1');
                 const chk2 = item.querySelector('.pago2');
                 
+                if (!chk1 || !chk2) return; 
+
                 chk1.checked = false; chk1.classList.remove('pagado-db');
                 chk2.checked = false; chk2.classList.remove('pagado-db');
 
@@ -358,7 +356,6 @@
             });
         }
 
-        // --- 3. MOSTRAR ADVERTENCIAS INTELIGENTES ---
         async function toggleDiasSemanales() {
             const semanaActual = document.getElementById('semana-cobro').value;
             const numSemana = parseInt(semanaActual.replace('Semana ', ''));
@@ -393,7 +390,6 @@
             fetch(API_URL, { method: 'POST', body: JSON.stringify({ accion: 'actualizar_config_semana', semana: semanaActual, pago1: p1, pago2: p2 }) });
         }
 
-        // --- 4. CALCULAR REPORTE (MATEMÁTICA ESTRICTA) ---
         function generarReporteDeudores() {
             const semanaReal = obtenerSemanaReal();
             let totalEsperado = 0;
@@ -437,25 +433,25 @@
             document.getElementById("lista-deudores").innerHTML = htmlDeudores;
         }
 
-        // =========================================================
-        // LÓGICA DE VELOCIDAD INSTANTÁNEA AL GUARDAR PAGOS
-        // =========================================================
+        // --- GUARDAR PAGOS (Con prevención de error null y carga instantánea) ---
         async function guardarCuotasSemanales(boton) {
             const semanaSeleccionada = document.getElementById('semana-cobro').value;
             let pagosAGuardar = [];
 
-            document.querySelectorAll('.student-item').forEach(item => {
+            // Restricción: Solo buscar casillas dentro de la lista de estudiantes
+            document.querySelectorAll('#lista-estudiantes .student-item').forEach(item => {
                 const n = item.getAttribute('data-nombre');
                 const c1 = item.querySelector('.pago1');
                 const c2 = item.querySelector('.pago2');
-                if (c1.checked && !c1.disabled && !c1.classList.contains('pagado-db')) pagosAGuardar.push({ estudiante: n, semana: semanaSeleccionada, tipoPago: "Pago 1", monto: 1.00 });
-                if (c2.checked && !c2.disabled && !c2.classList.contains('pagado-db')) pagosAGuardar.push({ estudiante: n, semana: semanaSeleccionada, tipoPago: "Pago 2", monto: 1.00 });
+                
+                if (c1 && c1.checked && !c1.disabled && !c1.classList.contains('pagado-db')) pagosAGuardar.push({ estudiante: n, semana: semanaSeleccionada, tipoPago: "Pago 1", monto: 1.00 });
+                if (c2 && c2.checked && !c2.disabled && !c2.classList.contains('pagado-db')) pagosAGuardar.push({ estudiante: n, semana: semanaSeleccionada, tipoPago: "Pago 2", monto: 1.00 });
             });
 
             if (pagosAGuardar.length === 0) { mostrarError("No hay pagos nuevos que guardar."); return; }
             const textoOriginal = boton.innerHTML; boton.innerHTML = "⏳ Guardando..."; boton.disabled = true;
 
-            // 1. MAGIA VISUAL: Se pintan de verde y se actualiza el reporte y el fondo al instante
+            // Efecto visual instantáneo
             pagosAGuardar.forEach(p => {
                 cuotasGeneralesDB.push({ estudiante: p.estudiante, semana: p.semana, tipoPago: p.tipoPago });
             });
@@ -466,13 +462,11 @@
             let fondoActual = parseFloat(fondoElem.innerText.replace('$', '').replace(',', ''));
             fondoElem.innerText = "$" + (fondoActual + pagosAGuardar.length).toFixed(2);
 
-            // 2. VIAJE A GOOGLE EN SEGUNDO PLANO
             try {
                 const response = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ accion: 'guardar_cuotas_masivas', pagos: pagosAGuardar, registradoPor: localStorage.getItem("usuarioLogueado") }) });
                 const data = await response.json();
                 if (data.exito) { 
                     mostrarExito("Listo"); 
-                    // Sincronización silenciosa final por seguridad
                     fetch(API_URL, { method: 'POST', body: JSON.stringify({ accion: 'obtener_datos' }) })
                         .then(r=>r.json()).then(d=>{ cuotasGeneralesDB=d.cuotasPagadas; generarReporteDeudores(); });
                 } else { 
@@ -526,6 +520,8 @@
         }
 
         function cambiarPantalla(id, menu) { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active')); document.getElementById(id).classList.add('active'); menu.classList.add('active'); window.scrollTo(0, 0); }
+        
+        // BORRA TODO PARA QUE EL LOGIN VUELVA A PEDIR PIN Y NO DIGA "UNDEFINED"
         function cerrarSesion() { localStorage.clear(); window.location.href = "login.html"; }
     </script>
 </body>
