@@ -223,7 +223,9 @@
             configurarFechas();
             cargarDatosDesdeGoogle();
             
-            // Interceptar clic para anular pagos (AHORA ES INSTANTÁNEO)
+            // =========================================================
+            // LÓGICA DE VELOCIDAD INSTANTÁNEA AL ANULAR UN PAGO
+            // =========================================================
             document.getElementById('lista-estudiantes').addEventListener('click', async (e) => {
                 if (e.target.classList.contains('check-btn')) {
                     const chk = e.target;
@@ -237,16 +239,23 @@
 
                         if(confirm(`¿Deseas anular el ${tipoPago} de ${estudiante} de la ${semana}?`)) {
                             
-                            // --- MAGIA VISUAL: Se borra y actualiza el reporte en 0.1 segundos ---
+                            // 1. MAGIA VISUAL: Se quita el color verde al instante
                             chk.classList.remove('pagado-db');
                             chk.checked = false;
                             
+                            // 2. Se borra de la memoria temporal
                             const index = cuotasGeneralesDB.findIndex(c => c.estudiante === estudiante && c.semana === semana && c.tipoPago === tipoPago);
                             if (index !== -1) cuotasGeneralesDB.splice(index, 1);
                             
-                            generarReporteDeudores(); // El número baja al instante en la pestaña de Reporte
+                            // 3. Se actualiza el Reporte de Deudores al instante
+                            generarReporteDeudores(); 
                             
-                            // --- VIAJE A GOOGLE EN SEGUNDO PLANO ---
+                            // 4. Se resta $1.00 del Fondo Principal al instante
+                            let fondoElem = document.getElementById('fondo-total');
+                            let fondoActual = parseFloat(fondoElem.innerText.replace('$', '').replace(',', ''));
+                            fondoElem.innerText = "$" + (fondoActual - 1).toFixed(2);
+                            
+                            // 5. VIAJE A GOOGLE EN SEGUNDO PLANO
                             try {
                                 const response = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ accion: 'eliminar_cuota', estudiante: estudiante, semana: semana, tipoPago: tipoPago }) });
                                 const data = await response.json();
@@ -309,7 +318,7 @@
 
         // --- 1. SABER EN QUÉ SEMANA ESTAMOS EXACTAMENTE ---
         function obtenerSemanaReal() {
-            const fechaInicio = new Date(2026, 1, 2); // 2 de febrero
+            const fechaInicio = new Date(2026, 1, 2); // 2 de febrero de 2026
             const hoy = new Date();
             const diasT = Math.floor((hoy.getTime() - fechaInicio.getTime()) / (1000 * 60 * 60 * 24));
             let s = Math.floor(diasT / 7) + 1;
@@ -366,23 +375,21 @@
             let apagoAlgo = (p1Ant && !p1) || (p2Ant && !p2);
             let encendioAlgo = (!p1Ant && p1) || (!p2Ant && p2);
 
-            // ADVERTENCIA 1: Quieren habilitar el futuro
             if (numSemana > semanaReal && encendioAlgo) {
                 if(!confirm("⚠️ ADVERTENCIA: Estás habilitando el cobro para una semana futura. Esto aumentará la deuda. ¿Deseas continuar?")) {
-                    actualizarChecks(); return; // Revertir si dice que no
+                    actualizarChecks(); return; 
                 }
             }
             
-            // ADVERTENCIA 2: Quieren perdonar el pasado
             if (numSemana <= semanaReal && apagoAlgo) {
                  if(!confirm("⚠️ ADVERTENCIA: Estás desactivando un día de cobro. Esto perdonará esa cuota y reducirá la deuda exigida para todos. ¿Confirmas?")) {
-                     actualizarChecks(); return; // Revertir si dice que no
+                     actualizarChecks(); return; 
                  }
             }
 
             configSemanasDB[semanaActual] = { pago1: p1, pago2: p2 };
             actualizarChecks();
-            generarReporteDeudores(); // Se resta matemáticamente al instante
+            generarReporteDeudores(); 
 
             fetch(API_URL, { method: 'POST', body: JSON.stringify({ accion: 'actualizar_config_semana', semana: semanaActual, pago1: p1, pago2: p2 }) });
         }
@@ -400,7 +407,6 @@
                 let p1Activo = conf ? (conf.pago1 === true || conf.pago1 === "true") : porDefecto;
                 let p2Activo = conf ? (conf.pago2 === true || conf.pago2 === "true") : porDefecto;
                 
-                // Si la casilla está marcada, suma 1. Si está desmarcada, NO SUMA NADA.
                 if (p1Activo) totalEsperado += 1;
                 if (p2Activo) totalEsperado += 1;
             }
@@ -432,6 +438,9 @@
             document.getElementById("lista-deudores").innerHTML = htmlDeudores;
         }
 
+        // =========================================================
+        // LÓGICA DE VELOCIDAD INSTANTÁNEA AL GUARDAR PAGOS
+        // =========================================================
         async function guardarCuotasSemanales(boton) {
             const semanaSeleccionada = document.getElementById('semana-cobro').value;
             let pagosAGuardar = [];
@@ -447,20 +456,24 @@
             if (pagosAGuardar.length === 0) { mostrarError("No hay pagos nuevos que guardar."); return; }
             const textoOriginal = boton.innerHTML; boton.innerHTML = "⏳ Guardando..."; boton.disabled = true;
 
-            // --- MAGIA VISUAL INSTANTÁNEA ---
+            // 1. MAGIA VISUAL: Se pintan de verde y se actualiza el reporte y el fondo al instante
             pagosAGuardar.forEach(p => {
                 cuotasGeneralesDB.push({ estudiante: p.estudiante, semana: p.semana, tipoPago: p.tipoPago });
             });
-            actualizarChecks(); // Se pintan de verde instantáneamente
-            generarReporteDeudores(); // El reporte se recalcula al instante
+            actualizarChecks(); 
+            generarReporteDeudores(); 
+            
+            let fondoElem = document.getElementById('fondo-total');
+            let fondoActual = parseFloat(fondoElem.innerText.replace('$', '').replace(',', ''));
+            fondoElem.innerText = "$" + (fondoActual + pagosAGuardar.length).toFixed(2);
 
-            // --- VIAJE A GOOGLE EN SEGUNDO PLANO ---
+            // 2. VIAJE A GOOGLE EN SEGUNDO PLANO
             try {
                 const response = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ accion: 'guardar_cuotas_masivas', pagos: pagosAGuardar, registradoPor: localStorage.getItem("usuarioLogueado") }) });
                 const data = await response.json();
                 if (data.exito) { 
                     mostrarExito("Listo"); 
-                    // Sincronización silenciosa para asegurar todo
+                    // Sincronización silenciosa final por seguridad
                     fetch(API_URL, { method: 'POST', body: JSON.stringify({ accion: 'obtener_datos' }) })
                         .then(r=>r.json()).then(d=>{ cuotasGeneralesDB=d.cuotasPagadas; generarReporteDeudores(); });
                 } else { 
