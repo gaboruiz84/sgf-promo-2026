@@ -29,7 +29,6 @@
         .btn-primary:active { transform: scale(0.98); }
         .btn-primary:disabled { opacity: 0.7; cursor: not-allowed; transform: none; }
         
-        /* Botón para espectadores */
         .btn-secondary { width: 100%; background: #F3F4F6; color: var(--primary-light); padding: 14px; border: 1px solid var(--border); border-radius: 10px; font-size: 0.95rem; font-weight: 600; cursor: pointer; transition: 0.2s; margin-top: 1rem; }
         .btn-secondary:active { background: #E5E7EB; }
         
@@ -51,7 +50,7 @@
         <form id="login-form">
             <div class="form-group">
                 <label>Usuario / Cargo (Opcional)</label>
-                <input type="text" id="usuario" placeholder="Ej: Tesorera" autocomplete="off">
+                <input type="text" id="usuario" placeholder="Ej: Presidente" autocomplete="off">
             </div>
             
             <div class="form-group">
@@ -71,15 +70,21 @@
     </div>
 
     <script>
-        // TU URL OFICIAL
         const API_URL = "https://script.google.com/macros/s/AKfycbxfJPvUGrzOR55e3uGwjDKaGPtXjsCPE0Y6nFDjFTvgjQy5-5f6aw406QMeta8i58z1fg/exec";
         
-        // Si el usuario ya había iniciado sesión antes, lo mandamos directo al Dashboard
-        if (localStorage.getItem("usuarioLogueado")) {
+        // --- DESTRUCTOR DE LOOPS ---
+        // Si hay una sesión bugeada, la borramos antes de que rompa la pantalla
+        let usuarioGuardado = localStorage.getItem("usuarioLogueado");
+        if (usuarioGuardado === "undefined" || usuarioGuardado === "null") {
+            localStorage.clear();
+            usuarioGuardado = null;
+        }
+
+        // Si la sesión está sana, lo mandamos al index
+        if (usuarioGuardado) {
             window.location.href = "index.html";
         }
 
-        // Lógica para el botón de Espectador
         function entrarComoEspectador() {
             localStorage.setItem("usuarioLogueado", "Invitado");
             localStorage.setItem("cargoUsuario", "Espectador");
@@ -97,7 +102,6 @@
             
             if (!pin) return;
 
-            // Estado de carga
             btn.innerHTML = "⏳ Verificando...";
             btn.disabled = true;
             errorMsg.style.display = 'none';
@@ -132,7 +136,7 @@
                     btn.disabled = false;
                 }
             } catch (error) {
-                errorMsg.innerText = "Error de conexión. Revisa tu internet y vuelve a intentar.";
+                errorMsg.innerText = "Error de red. Intenta de nuevo.";
                 errorMsg.style.display = 'block';
                 btn.innerHTML = "Ingresar como Directiva";
                 btn.disabled = false;
